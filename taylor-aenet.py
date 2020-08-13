@@ -132,7 +132,7 @@ def write_xsf_files(data, directory):
   energy = []
   os.mkdir(directory)
   for i, structure in enumerate(data):
-    fileLoc.append(directory + "/structure" + str(i) + ".xsf")
+    fileLoc.append(directory + "/structure" + str(i).zfill(4) + ".xsf")
     energy.append(structure.get("totalEnergy"))
     if structure.get("isPeriodic"):
       PrimVec = structure.get("primVec")
