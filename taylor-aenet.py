@@ -22,8 +22,23 @@ def main():
   outputStruct = input("enter full desired path to directory for new .xsf (str): ")
   
   tmp = read_generate_in(generateIn)
-  nFiles = tmp.get("fileCount")
+  finalStructCount = aValue * int(tmp.get("fileCount")) 
+  genReadFileCount = int(tmp.get("fileCount"))
+  runningFileCount = int(tmp.get("fileCount"))
   files = tmp.get("files")
+
+  for i, xsf in enumerate(files):
+    structureData.append(read_xsf_file(xsf))
+    for atom in structureData[i].get("atoms"):
+       
+    
+
+
+
+
+
+
+
 
   # Loop through structure files
   for i, xsf in enumerate(files):
@@ -46,7 +61,7 @@ def main():
 
   # Write files
   write_xsf_files(newStructureData, outputStruct)
-  write_generate_file(generateIn, outputGen, outputStruct, nFiles)
+  write_generate_file(generateIn, outputGen, outputStruct, finalStructCount, genReadFileCount)
 
 def read_generate_in(generate_in = "./generate.in"):
   """
@@ -70,8 +85,8 @@ def read_generate_in(generate_in = "./generate.in"):
   for i in range(fileStartIndex, len(genRead)):
     files.append(genRead[i].strip())
 
-  nFiles = genRead[fileCountIndex].strip()
-  return {"fileCount" : nFiles, "files" : files}
+  fileCount = int(genRead[fileCountIndex].strip())
+  return {"fileCount" : fileCount, "files" : files}
 
 def read_xsf_file(xsf):
   """
@@ -132,7 +147,7 @@ def write_xsf_files(data, directory):
   energy = []
   os.mkdir(directory)
   for i, structure in enumerate(data):
-    fileLoc.append(directory + "/structure" + str(i).zfill(4) + ".xsf")
+    fileLoc.append(directory + "/structure{num:04d}.xsf".format(num=i))
     energy.append(structure.get("totalEnergy"))
     if structure.get("isPeriodic"):
       PrimVec = structure.get("primVec")
@@ -161,27 +176,30 @@ def write_xsf_files(data, directory):
                 atom.get(fy) + "  " +
                 atom.get(fz) + "\r")
 
-def write_generate_file(originalLoc, newLoc, structDir, nFiles):
+def write_generate_file(originalLoc, newLoc, structDir, finalStructCount, genReadFileCount):
   """
   Write new generate.in files based on original generate.in file, number of
   xsf files, and the location of the directory containing xsf files. File 
   written at newLoc. 
   """
-  xsfRead = ""
+  genRead = ""
 
   with open(originalLoc, 'r') as f:
     genRead = f.readlines()
 
   for index, line in enumerate(genRead):
     if (line.strip() == "FILES"):
-      xsfRead = xsfRead[0:index]
+      genReadTop = genRead[0:index+1]
+      genReadBottom = genRead[index+2:len(genRead)]
 
   with open(newLoc, 'a') as f:
-    for line in genRead:
-      f.write(line + "\r")
-    f.write(nFiles + "\r")
-    for i in range(int(nFiles)):
-      f.write(structDir + "/structure" + str(i) + ".xsf\r")
+    for line in genReadTop:
+      f.write(line)
+    f.write(str(nFiles) + "\n")
+    for line in genReadBottom:
+      f.write(line)
+    for i in range(int(nFiles - fileCount)):
+      f.write(structDir + "/structure{num:04d}.xsf\n".format(num=i))
 
 def new_atom(data, delta, direction):
   """
@@ -210,6 +228,42 @@ def new_atom(data, delta, direction):
       output.update({direction : coordinates.get(dir)})
 
   return output
+
+def build_new_atoms(atom, delta):
+  """
+  Calculates coordinates of one new structure as well as the energy deductions
+  they are responsible for based on the 1st order Taylor Expansion demonstrated by
+  A. Cooper, J. Kästner, A. Urban, N. Artrith, npj Comput. Mater. 6 (2020) 54. 
+
+  Parameters
+  ----------
+  data : Dictionaries with symbol, cartesian coordinates, and force components
+         (cartesian) of the input atom.
+         Keys: 'symbol', 'x', 'y', 'z', 'fx', 'fy', 'fz'.
+  delta : Float.
+
+  Returns
+  -------
+  {'energyDeduction' : eDeduct, 'atoms' : atoms}
+  """
+
+  displacement = abs(delta) # Delta but always positive. 
+  atoms = [] # Array of dictionaries of ALL new atoms based on the input atom. 
+  eDeduct = 0.0 # Energy deductions. ASSUMES eDeduct should always treat
+                # delta as positive. Is this accurate? Check. 
+  negativeAtoms = [] # Array of dictionaries of ONLY atoms made with deltas < 0.
+
+  for direction in "xyz":
+    atoms.append(new_atom(data, delta, direction))
+    eDeduct += force.get(direction) * displacement
+
+  if (delta > 0):
+    delta *= -1
+    negativeAtoms = build_new_atoms(data, delta).get('atoms')
+    for i in range(3):
+      atoms.append(negativeAtoms[i])
+
+  return {'energyDeduction' : eDeduct, 'atoms' : atoms}
 
 def build_new_atoms(atom, delta):
   """
