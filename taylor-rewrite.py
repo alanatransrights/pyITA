@@ -108,7 +108,7 @@ def read_xsf_to_Structure(xsf):
 
     structure.energy = float(xsfRead[0].split()[4])
     
-    for i, line in enumerate(xsfRead):
+    for index, line in enumerate(xsfRead):
         if (line.strip() == "ATOM"):
             structure.isPeriodic = False
             atomStartIndex = index + 1
