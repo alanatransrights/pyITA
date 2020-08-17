@@ -55,7 +55,7 @@ def main():
     structLocs = oldGen.structLocs
     oldStructs = []
     newStructs = []
-    oldStructCount = 0
+    oldStructsCount = 0
 
     for xsf in structLocs:
         oldStructs.append(read_xsf_to_Structure(xsf))
