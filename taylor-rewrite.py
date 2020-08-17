@@ -2,7 +2,7 @@ import numpy
 import sys
 import os
 
-global delta = 0
+delta = 0
 
 class Structure:
     def __init__(self, energy = 0.0, atoms = [], isPeriodic = True, coordCount = 0, primVec = []):
