@@ -13,7 +13,7 @@ class Structure:
         self.primVec = primVec
     
     def build_new_structure(self, atomIndex, direction, sign):
-        newStructure = Structure(energy, atoms, isPeriodic) # Build new struct
+        newStructure = Structure(self.energy, self.atoms, self.isPeriodic) # Build new struct
         targetAtom = newStructure.atoms[atomIndex] # Fetch target atom
         if sign == "+":
             newStructure.energy -= delta * targetAtom.forces.get(direction) # Deduct energy of new structure
