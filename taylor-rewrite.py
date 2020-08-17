@@ -40,7 +40,6 @@ class Generate_In:
     def __init__(self, structLocs = [], topLines = []):
         self.structLocs = structLocs # Locations of all .xsf files (array of strings)
         self.topLines = topLines # Every line before "FILES" (array of strings)
-        break
 
 def main():
     delta = input("enter delta (float): ")
