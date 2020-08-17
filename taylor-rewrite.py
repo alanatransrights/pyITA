@@ -69,6 +69,7 @@ def main():
             for direction in "xyz":
                 for sign in "+-":
                     if newStructsCount < newStructsMax:
+                        print(structure.atoms)
                         tmp = structure.build_new_structure(index, direction, sign)
                         newStructs.append(tmp)
                         newStructsCount += 1
