@@ -72,7 +72,7 @@ def main():
                     if newStructsCount < newStructsMax:
                         tmp = structure.build_new_structure(index, direction, sign)
                         newStructs.append(tmp)
-                        newStructsCount++
+                        newStructsCount += 1
     
     totalStructsCount = oldStructsCount + newStructsCount
 
