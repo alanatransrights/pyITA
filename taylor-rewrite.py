@@ -28,6 +28,8 @@ class Structure:
     def build_new_structure(self, atomIndex, direction, sign):
         newStructure = Structure(self.energy, self.atoms, self.isPeriodic) # Build new struct
         targetAtom = newStructure.atoms[atomIndex] # Fetch target atom
+        print(targetAtom)
+        print(newStructure.atoms[atomIndex]
         """
         if sign == "+":
             newStructure.energy -= delta * targetAtom.forces.get(direction) # Deduct energy of new structure
@@ -71,7 +73,6 @@ def main():
             for direction in "xyz":
                 for sign in "+-":
                     if newStructsCount < newStructsMax:
-                        print(structure.atoms)
                         tmp = structure.build_new_structure(index, direction, sign)
                         newStructs.append(tmp)
                         newStructsCount += 1
