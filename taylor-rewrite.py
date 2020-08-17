@@ -4,6 +4,19 @@ import os
 
 delta = 0
 
+class Atom:
+    def __init__(self, symbol, coordinates, forces):
+        self.symbol = symbol # String, atomic symbol
+        self.coordinates = coordinates # Dictionary
+        self.forces = forces # Dictionary
+    def displace(self, direction, sign):
+        if sign == "+":
+            self.coordinates[direction] += delta
+        elif sign == "-":
+            self.coordinates[direction] -= delta
+        else:
+            sys.exit("No sign specified for atom shift")
+
 class Structure:
     def __init__(self, energy = 0.0, atoms = [], isPeriodic = True, coordCount = 0, primVec = []):
         self.energy = energy 
@@ -21,19 +34,6 @@ class Structure:
             newStructure.energy += delta * targetAtom.forces.get(direction) # Add energy to new structure
         newStructure.atoms[atomIndex] = targetAtom.displace(direction, sign) # Replace atom of new structure
         return newStructure
-
-class Atom:
-    def __init__(self, symbol, coordinates, forces):
-        self.symbol = symbol # String, atomic symbol
-        self.coordinates = coordinates # Dictionary
-        self.forces = forces # Dictionary
-    def displace(self, direction, sign):
-        if sign == "+":
-            self.coordinates[direction] += delta
-        elif sign == "-":
-            self.coordinates[direction] -= delta
-        else:
-            sys.exit("No sign specified for atom shift")
 
 class Generate_In:
     # WISHLIST: topLines should not be necessary. 
