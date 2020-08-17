@@ -42,11 +42,11 @@ class Generate_In:
         self.topLines = topLines # Every line before "FILES" (array of strings)
 
 def main():
-    delta = input("enter delta (float): ")
+    delta = float(input("enter delta (float): "))
     oldGenLoc = input("enter full path to existing generate.in (str): ") # input generate.in location
     newGenLoc = input("enter full desired path new generate.in (str): ") # new generate.in location
     newStructsDir = input("enter full desired path to directory for new .xsf (str): ") # folder for new .xsfs
-    aValue = input("enter desired A-value (A * size of existing dataset = size of additional dataset): ")
+    aValue = float(input("enter desired A-value (A * size of existing dataset = size of additional dataset): "))
 
     if aValue < 1:
         sys.exit("A-Value MUST >= 1")
