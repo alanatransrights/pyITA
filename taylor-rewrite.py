@@ -83,7 +83,7 @@ def read_generate_in(oldGenLoc):
     fileCountIndex = -1
     fileStartIndex = -1
 
-    with open(generate_in.strip(), 'r') as f:
+    with open(oldGenLoc.strip(), 'r') as f:
         genRead = f.readlines()
 
     for index, line in enumerate(genRead):
