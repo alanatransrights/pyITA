@@ -43,7 +43,7 @@ class Generate_In:
         break
 
 def main():
-    global delta = input("enter delta (float): ")
+    delta = input("enter delta (float): ")
     oldGenLoc = input("enter full path to existing generate.in (str): ") # input generate.in location
     newGenLoc = input("enter full desired path new generate.in (str): ") # new generate.in location
     newStructsDir = input("enter full desired path to directory for new .xsf (str): ") # folder for new .xsfs
