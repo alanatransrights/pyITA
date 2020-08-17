@@ -28,11 +28,13 @@ class Structure:
     def build_new_structure(self, atomIndex, direction, sign):
         newStructure = Structure(self.energy, self.atoms, self.isPeriodic) # Build new struct
         targetAtom = newStructure.atoms[atomIndex] # Fetch target atom
+        """
         if sign == "+":
             newStructure.energy -= delta * targetAtom.forces.get(direction) # Deduct energy of new structure
         elif sign == "-":
             newStructure.energy += delta * targetAtom.forces.get(direction) # Add energy to new structure
         newStructure.atoms[atomIndex] = targetAtom.displace(direction, sign) # Replace atom of new structure
+        """
         return newStructure
 
 class Generate_In:
