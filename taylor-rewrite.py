@@ -28,12 +28,15 @@ class Structure:
     def build_new_structure(self, atomIndex, direction, sign):
         newStructure = Structure(self.energy, self.atoms, self.isPeriodic, self.coordCount, self.primVec) # Build new struct
         targetAtom = newStructure.atoms[atomIndex] # Fetch target atom
+        if isinstance(targetAtom, Atom):
+            if sign == "+":
+                newStructure.energy -= delta * targetAtom.forces.get(direction) # Deduct energy of new structure
+            elif sign == "-":
+                newStructure.energy += delta * targetAtom.forces.get(direction) # Add energy to new structure
+            newStructure.atoms[atomIndex] = targetAtom.displace(direction, sign) # Replace atom of new structure
         """
-        if sign == "+":
-            newStructure.energy -= delta * targetAtom.forces.get(direction) # Deduct energy of new structure
-        elif sign == "-":
-            newStructure.energy += delta * targetAtom.forces.get(direction) # Add energy to new structure
-        newStructure.atoms[atomIndex] = targetAtom.displace(direction, sign) # Replace atom of new structure
+        if (not isinstance(targetAtom, Atom)):
+            print("targetAtom in build_new_structure is NOT Atom")
         """
         return newStructure
 
@@ -71,9 +74,13 @@ def main():
             for direction in "xyz":
                 for sign in "+-":
                     if newStructsCount < newStructsMax:
-                        tmp = structure.build_new_structure(index, direction, sign)
-                        newStructs.append(tmp)
-                        newStructsCount += 1
+                        if isinstance(structure.atoms[index], Atom):
+                            print("yay!")
+                            tmp = structure.build_new_structure(index, direction, sign)
+                            newStructs.append(tmp)
+                            newStructsCount += 1
+                        if (not isinstance(structure.atoms[index], Atom)):
+                            print("not isinstance")
     
     totalStructsCount = oldStructsCount + newStructsCount
 
@@ -139,10 +146,17 @@ def read_xsf_to_Structure(xsf):
                   "y" : float(tmp[5]),
                   "z" : float(tmp[6])}
         structure.atoms.append(Atom(symbol, coordinates, forces))
+    
+    for atom in structure.atoms:
+        if (not isinstance(atom, Atom)):
+            print("read_xsf_to_Structure contained atom of non-atom type")
+            print(atom)
+        if isinstance(atom, Atom):
+            structure.atoms.append(atom)
 
     return structure
 
-def write_generate_file(oldGen, newGenLoc, newStructsDir, totalStructsCount):
+def write_generate_file(oldGen, newGenLoc, newStructsDir, totalStructsCount, newStructsCount):
     with open(newGenLoc, 'a') as f:
         for line in oldGen.topLines:
             f.write(line)
@@ -169,14 +183,15 @@ def write_xsf_files(newStructsDir, newStructs):
             f.write("# total energy = " + str(energies[i]) + " eV\r\n")
             if structure.isPeriodic:
                 f.write("CRYSTAL\rPRIMVEC")
-                # f.write("\r   " + str(primVec[0][0]) + "  " + str(primVec[0][1]) + "  " + str(primVec[0][2]))
-                # f.write("\r   " + str(primVec[1][0]) + "  " + str(primVec[1][1]) + "  " + str(primVec[1][2]))
-                # f.write("\r   " + str(primVec[2][0]) + "  " + str(primVec[2][1]) + "  " + str(primVec[2][2]))
+                f.write("\r   " + str(primVec[0][0]) + "  " + str(primVec[0][1]) + "  " + str(primVec[0][2]))
+                f.write("\r   " + str(primVec[1][0]) + "  " + str(primVec[1][1]) + "  " + str(primVec[1][2]))
+                f.write("\r   " + str(primVec[2][0]) + "  " + str(primVec[2][1]) + "  " + str(primVec[2][2]))
                 f.write("\rPRIMCOORD\r")
                 f.write(str(coordCount))
                 f.write("\r")
             else:
                 f.write("ATOMS\r")
+            """
             for atom in atoms:
                 f.write(atom.symbol + "  " +
                         str(atom.coordinates.get("x")) + "  " +
@@ -185,5 +200,6 @@ def write_xsf_files(newStructsDir, newStructs):
                         str(atom.forces.get("x")) + "  " +
                         str(atom.forces.get("y")) + "  " +
                         str(atom.forces.get("z")) + "\n")
+            """
 
 main()
