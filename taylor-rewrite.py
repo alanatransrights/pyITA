@@ -162,8 +162,6 @@ def write_xsf_files(newStructsDir, newStructs):
         energies.append(structure.energy)
         if structure.isPeriodic:
             primVec = structure.primVec
-            print("primVec: ")
-            print(primVec)
             coordCount = structure.coordCount
         atoms = structure.atoms
 
