@@ -1,6 +1,7 @@
 import numpy
 import sys
 import os
+import pprint
 
 delta = 0
 
@@ -18,27 +19,12 @@ class Atom:
             sys.exit("No sign specified for atom shift")
 
 class Structure:
-    def __init__(self, energy = 0.0, atoms = [], isPeriodic = True, coordCount = 0, primVec = []):
+    def __init__(self, energy = 0.0, atoms = None, isPeriodic = True, coordCount = 0, primVec = list()): 
         self.energy = energy 
-        self.atoms = atoms 
+        self.atoms = atoms if (atoms is not None) else list()
         self.isPeriodic = isPeriodic
         self.coordCount = coordCount
         self.primVec = primVec
-    
-    def build_new_structure(self, atomIndex, direction, sign):
-        newStructure = Structure(self.energy, self.atoms, self.isPeriodic, self.coordCount, self.primVec) # Build new struct
-        targetAtom = newStructure.atoms[atomIndex] # Fetch target atom
-        if isinstance(targetAtom, Atom):
-            if sign == "+":
-                newStructure.energy -= delta * targetAtom.forces.get(direction) # Deduct energy of new structure
-            elif sign == "-":
-                newStructure.energy += delta * targetAtom.forces.get(direction) # Add energy to new structure
-            newStructure.atoms[atomIndex] = targetAtom.displace(direction, sign) # Replace atom of new structure
-        """
-        if (not isinstance(targetAtom, Atom)):
-            print("targetAtom in build_new_structure is NOT Atom")
-        """
-        return newStructure
 
 class Generate_In:
     # WISHLIST: topLines should not be necessary. 
@@ -47,6 +33,7 @@ class Generate_In:
         self.topLines = topLines # Every line before "FILES" (array of strings)
 
 def main():
+    print("began main")
     delta = float(input("enter delta (float): "))
     oldGenLoc = input("enter full path to existing generate.in (str): ") # input generate.in location
     newGenLoc = input("enter full desired path new generate.in (str): ") # new generate.in location
@@ -62,32 +49,56 @@ def main():
     newStructs = []
     oldStructsCount = 0
 
-    for xsf in structLocs:
+    print("Reading XSF files")
+    for i, xsf in enumerate(structLocs):
         oldStructs.append(read_xsf_to_Structure(xsf))
         oldStructsCount += 1
 
     newStructsCount = 0
     newStructsMax = aValue * oldStructsCount
+    counter = 0
 
-    for structure in oldStructs: 
-        for index, atom in enumerate(structure.atoms):
-            for direction in "xyz":
-                for sign in "+-":
+    for direction in "xyz":
+        for sign in "+-":
+            for structure in oldStructs: 
+                for index, atom in enumerate(structure.atoms):
                     if newStructsCount < newStructsMax:
                         if isinstance(structure.atoms[index], Atom):
-                            print("yay!")
-                            tmp = structure.build_new_structure(index, direction, sign)
+                            tmp = build_new_structure(structure, index, direction, sign)
                             newStructs.append(tmp)
+                            print("1 debug: " + str(tmp.atoms[index]))
+                            print("2 debug: " + str(newStructs[counter].atoms[index]))
+                            counter += 1
                             newStructsCount += 1
-                        if (not isinstance(structure.atoms[index], Atom)):
-                            print("not isinstance")
-    
-    totalStructsCount = oldStructsCount + newStructsCount
+                        else:
+                            print("not isinstance, instead, type is: " + str(type(structure.atoms[index])))
 
+    totalStructsCount = oldStructsCount + newStructsCount
     write_xsf_files(newStructsDir, newStructs)
     write_generate_file(oldGen, newGenLoc, newStructsDir, totalStructsCount, newStructsCount)
 
+def build_new_structure(struct, atomIndex, direction, sign):
+    newStructure = Structure(struct.energy, struct.atoms, struct.isPeriodic, struct.coordCount, struct.primVec) # Build new struct
+    targetAtom = newStructure.atoms[atomIndex] # fetch target atom
+    print("target 1: " + str(targetAtom))
+    print("3 debug: " + str(newStructure.atoms[atomIndex]))
+    if isinstance(targetAtom, Atom):
+        if sign == "+":
+            newStructure.energy -= delta * targetAtom.forces.get(direction) # deduct energy of new structure
+        elif sign == "-":
+            newStructure.energy += delta * targetAtom.forces.get(direction) # add energy to new structure
+        else:
+            print("no sign specified")
+            sys.exit()
+        targetAtom.displace(direction, sign)
+        newStructure.atoms[atomIndex] = targetAtom
+    else:
+        print("targetatom in build_new_structure is not atom")
+    print("4 debug: " + str(newStructure.atoms[atomIndex]))
+    return newStructure
+
 def read_generate_in(oldGenLoc):
+    print("reading gen in")
     oldGen = Generate_In()
     fileCountIndex = -1
     fileStartIndex = -1
@@ -126,16 +137,18 @@ def read_xsf_to_Structure(xsf):
             atomCountIndex = index + 1
             atomStartIndex = index + 2
         elif (line.strip() == "PRIMVEC"):
+            structure.isPeriodic = True
             structure.primVec = []
             primVecStartIndex = index + 1
             primVecEndIndex = 3 + index + 1 # Assumes PrimVec is always three lines
 
     structure.coordCount = int(xsfRead[atomCountIndex].split()[0])
-    
+ 
     for i in range(primVecStartIndex, primVecEndIndex):
         tmp = xsfRead[i].split()
         structure.primVec.append(tmp)
 
+    atomCount = 0
     for i in range(atomStartIndex, len(xsfRead)): # Loops through atoms
         tmp = xsfRead[i].split()
         symbol = tmp[0]
@@ -146,60 +159,60 @@ def read_xsf_to_Structure(xsf):
                   "y" : float(tmp[5]),
                   "z" : float(tmp[6])}
         structure.atoms.append(Atom(symbol, coordinates, forces))
-    
-    for atom in structure.atoms:
-        if (not isinstance(atom, Atom)):
-            print("read_xsf_to_Structure contained atom of non-atom type")
-            print(atom)
-        if isinstance(atom, Atom):
-            structure.atoms.append(atom)
+        atomCount += 1
 
     return structure
 
 def write_generate_file(oldGen, newGenLoc, newStructsDir, totalStructsCount, newStructsCount):
+    print("write_generate_file")
     with open(newGenLoc, 'a') as f:
         for line in oldGen.topLines:
             f.write(line)
         f.write(str(totalStructsCount) + "\n")
         for line in oldGen.structLocs:
-            f.write(line)
+            f.write(line + "\n")
         for i in range(newStructsCount):
             f.write(newStructsDir + "/structure{num:04d}.xsf\n".format(num=i))
 
 def write_xsf_files(newStructsDir, newStructs):
+    print("write_xsf_files")
+
     locations = []
     energies = []
     os.mkdir(newStructsDir)
 
     for i, structure in enumerate(newStructs):
-        locations.append(newStructsDir + "/structure{num:04d}.xsf".format(num=i))
+        locations.append(newStructsDir + "/structure{num:04d}.xsf".format(num=i+1))
         energies.append(structure.energy)
         if structure.isPeriodic:
             primVec = structure.primVec
             coordCount = structure.coordCount
         atoms = structure.atoms
-
         with open(locations[i].strip(), 'w') as f:
-            f.write("# total energy = " + str(energies[i]) + " eV\r\n")
-            if structure.isPeriodic:
-                f.write("CRYSTAL\rPRIMVEC")
-                f.write("\r   " + str(primVec[0][0]) + "  " + str(primVec[0][1]) + "  " + str(primVec[0][2]))
-                f.write("\r   " + str(primVec[1][0]) + "  " + str(primVec[1][1]) + "  " + str(primVec[1][2]))
-                f.write("\r   " + str(primVec[2][0]) + "  " + str(primVec[2][1]) + "  " + str(primVec[2][2]))
-                f.write("\rPRIMCOORD\r")
+            f.write("# total energy = " + str(energies[i]) + " eV\n\n")
+            if (structure.isPeriodic):
+                f.write("CRYSTAL\nPRIMVEC")
+                f.write("\n        " + str(primVec[0][0]) + "     " + str(primVec[0][1]) + "     " + str(primVec[0][2]))
+                f.write("\n        " + str(primVec[1][0]) + "     " + str(primVec[1][1]) + "     " + str(primVec[1][2]))
+                f.write("\n        " + str(primVec[2][0]) + "     " + str(primVec[2][1]) + "     " + str(primVec[2][2]))
+                f.write("\nPRIMCOORD\n")
                 f.write(str(coordCount))
-                f.write("\r")
+                f.write("\n")
             else:
-                f.write("ATOMS\r")
-            """
+                f.write("ATOMS\n")
+            success=failure=0
             for atom in atoms:
-                f.write(atom.symbol + "  " +
-                        str(atom.coordinates.get("x")) + "  " +
-                        str(atom.coordinates.get("y")) + "  " +
-                        str(atom.coordinates.get("z")) + "  " +
-                        str(atom.forces.get("x")) + "  " +
-                        str(atom.forces.get("y")) + "  " +
-                        str(atom.forces.get("z")) + "\n")
-            """
+                if (isinstance(atom, Atom)):
+                    success += 1
+                    f.write("{0: <8}{1: <15}{2: <15}{3: <15}{4: <15}{5: <15}{6: <15}\n".format(atom.symbol,
+                                                                                              (atom.coordinates.get("x")),
+                                                                                              (atom.coordinates.get("y")),
+                                                                                              (atom.coordinates.get("z")),
+                                                                                              (atom.forces.get("x")),
+                                                                                              (atom.forces.get("y")),
+                                                                                              (atom.forces.get("z"))))
+                else:
+                    failure += 1
+            print("Success{succ}Failure{fail}".format(succ=success, fail=failure))
 
 main()
