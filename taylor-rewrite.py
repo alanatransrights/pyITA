@@ -26,10 +26,8 @@ class Structure:
         self.primVec = primVec
     
     def build_new_structure(self, atomIndex, direction, sign):
-        newStructure = Structure(self.energy, self.atoms, self.isPeriodic) # Build new struct
+        newStructure = Structure(self.energy, self.atoms, self.isPeriodic, self.coordCount, self.primVec) # Build new struct
         targetAtom = newStructure.atoms[atomIndex] # Fetch target atom
-        print(targetAtom)
-        print(newStructure.atoms[atomIndex]
         """
         if sign == "+":
             newStructure.energy -= delta * targetAtom.forces.get(direction) # Deduct energy of new structure
@@ -128,7 +126,7 @@ def read_xsf_to_Structure(xsf):
     structure.coordCount = int(xsfRead[atomCountIndex].split()[0])
     
     for i in range(primVecStartIndex, primVecEndIndex):
-        tmp = xsfRead[i].split
+        tmp = xsfRead[i].split()
         structure.primVec.append(tmp)
 
     for i in range(atomStartIndex, len(xsfRead)): # Loops through atoms
@@ -161,20 +159,21 @@ def write_xsf_files(newStructsDir, newStructs):
 
     for i, structure in enumerate(newStructs):
         locations.append(newStructsDir + "/structure{num:04d}.xsf".format(num=i))
-        energies.append(structure.get("totalEnergy"))
-        if structure.get("isPeriodic"):
+        energies.append(structure.energy)
+        if structure.isPeriodic:
             primVec = structure.primVec
-            primCoord = structure.primCoords
+            print("primVec: ")
+            print(primVec)
             coordCount = structure.coordCount
         atoms = structure.atoms
 
-        with open(fileLoc[i].strip(), 'w') as f:
-            f.write("# total energy = " + str(energy[i]) + " eV\r\n")
-            if structure.get("isPeriodic"):
+        with open(locations[i].strip(), 'w') as f:
+            f.write("# total energy = " + str(energies[i]) + " eV\r\n")
+            if structure.isPeriodic:
                 f.write("CRYSTAL\rPRIMVEC")
-                f.write("\r   " + str(primVec[0][0]) + "  " + str(primVec[0][1]) + "  " + str(primVec[0][2]))
-                f.write("\r   " + str(primVec[1][0]) + "  " + str(primVec[1][1]) + "  " + str(primVec[1][2]))
-                f.write("\r   " + str(primVec[2][0]) + "  " + str(primVec[2][1]) + "  " + str(primVec[2][2]))
+                # f.write("\r   " + str(primVec[0][0]) + "  " + str(primVec[0][1]) + "  " + str(primVec[0][2]))
+                # f.write("\r   " + str(primVec[1][0]) + "  " + str(primVec[1][1]) + "  " + str(primVec[1][2]))
+                # f.write("\r   " + str(primVec[2][0]) + "  " + str(primVec[2][1]) + "  " + str(primVec[2][2]))
                 f.write("\rPRIMCOORD\r")
                 f.write(str(coordCount))
                 f.write("\r")
@@ -182,11 +181,11 @@ def write_xsf_files(newStructsDir, newStructs):
                 f.write("ATOMS\r")
             for atom in atoms:
                 f.write(atom.symbol + "  " +
-                        atom.coordinates.get("x") + "  " +
-                        atom.coordinates.get("y") + "  " +
-                        atom.coordinates.get("z") + "  " +
-                        atom.forces.get("x") + "  " +
-                        atom.forces.get("y") + "  " +
-                        atom.forces.get("z") + "\n")
+                        str(atom.coordinates.get("x")) + "  " +
+                        str(atom.coordinates.get("y")) + "  " +
+                        str(atom.coordinates.get("z")) + "  " +
+                        str(atom.forces.get("x")) + "  " +
+                        str(atom.forces.get("y")) + "  " +
+                        str(atom.forces.get("z")) + "\n")
 
 main()
