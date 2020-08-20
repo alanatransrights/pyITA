@@ -176,7 +176,7 @@ def write_generate_file(oldGen, newGenLoc, newStructsDir, totalStructsCount, new
         for line in oldGen.structLocs:
             f.write(line + "\n")
         for i in range(newStructsCount):
-            f.write(newStructsDir + "/structure{num:04d}.xsf\n".format(num=i))
+            f.write(newStructsDir + "/structure{num:04d}.xsf\n".format(num=i+1))
 
 def write_xsf_files(newStructsDir, newStructs):
     print("write_xsf_files")
