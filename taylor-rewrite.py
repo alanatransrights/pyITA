@@ -2,6 +2,7 @@ import numpy
 import sys
 import os
 import pprint
+import copy
 
 delta = 0
 
@@ -11,15 +12,17 @@ class Atom:
         self.coordinates = coordinates # Dictionary
         self.forces = forces # Dictionary
     def displace(self, direction, sign):
+        tmp = {}
         if sign == "+":
-            self.coordinates[direction] += delta
+            tmp = {direction : self.coordinates.get(direction) + delta}
         elif sign == "-":
-            self.coordinates[direction] -= delta
+            tmp = {direction : self.coordinates.get(direction) - delta}
         else:
             sys.exit("No sign specified for atom shift")
+        self.coordinates.update(tmp)
 
 class Structure:
-    def __init__(self, energy = 0.0, atoms = None, isPeriodic = True, coordCount = 0, primVec = list()): 
+    def __init__(self, energy = 0.0, atoms = None, isPeriodic = True, coordCount = 0, primVec = tuple()): 
         self.energy = energy 
         self.atoms = atoms if (atoms is not None) else list()
         self.isPeriodic = isPeriodic
@@ -34,6 +37,7 @@ class Generate_In:
 
 def main():
     print("began main")
+    global delta
     delta = float(input("enter delta (float): "))
     oldGenLoc = input("enter full path to existing generate.in (str): ") # input generate.in location
     newGenLoc = input("enter full desired path new generate.in (str): ") # new generate.in location
@@ -56,32 +60,30 @@ def main():
 
     newStructsCount = 0
     newStructsMax = aValue * oldStructsCount
-    counter = 0
 
-    for direction in "xyz":
-        for sign in "+-":
-            for structure in oldStructs: 
-                for index, atom in enumerate(structure.atoms):
-                    if newStructsCount < newStructsMax:
+    for structure in oldStructs:
+        for index, atom in enumerate(structure.atoms):
+            for sign in ["+", "-"]:
+                for direction in ["x", "y", "z"]:
+                    if (newStructsCount < newStructsMax):
                         if isinstance(structure.atoms[index], Atom):
                             tmp = build_new_structure(structure, index, direction, sign)
                             newStructs.append(tmp)
-                            print("1 debug: " + str(tmp.atoms[index]))
-                            print("2 debug: " + str(newStructs[counter].atoms[index]))
-                            counter += 1
                             newStructsCount += 1
                         else:
-                            print("not isinstance, instead, type is: " + str(type(structure.atoms[index])))
+                            sys.exit("not isinstance, instead, type is: " + str(type(structure.atoms[index])))
 
     totalStructsCount = oldStructsCount + newStructsCount
     write_xsf_files(newStructsDir, newStructs)
     write_generate_file(oldGen, newGenLoc, newStructsDir, totalStructsCount, newStructsCount)
 
 def build_new_structure(struct, atomIndex, direction, sign):
-    newStructure = Structure(struct.energy, struct.atoms, struct.isPeriodic, struct.coordCount, struct.primVec) # Build new struct
+    """
+    TODO: Figure out why modifications to targetAtom (targetAtom.displace()) is affecting the non-target atoms. Suspected
+    line is "targetAtom = newStructure.atoms[atomIndex]". Make sure to pass by value.
+    """
+    newStructure = Structure(struct.energy, copy.deepcopy(struct.atoms), struct.isPeriodic, struct.coordCount, struct.primVec) # Build new struct
     targetAtom = newStructure.atoms[atomIndex] # fetch target atom
-    print("target 1: " + str(targetAtom))
-    print("3 debug: " + str(newStructure.atoms[atomIndex]))
     if isinstance(targetAtom, Atom):
         if sign == "+":
             newStructure.energy -= delta * targetAtom.forces.get(direction) # deduct energy of new structure
@@ -91,10 +93,11 @@ def build_new_structure(struct, atomIndex, direction, sign):
             print("no sign specified")
             sys.exit()
         targetAtom.displace(direction, sign)
+        if targetAtom == struct.atoms[atomIndex]:
+            print("AAAAAAAAAA PANIC")
         newStructure.atoms[atomIndex] = targetAtom
     else:
         print("targetatom in build_new_structure is not atom")
-    print("4 debug: " + str(newStructure.atoms[atomIndex]))
     return newStructure
 
 def read_generate_in(oldGenLoc):
@@ -138,15 +141,16 @@ def read_xsf_to_Structure(xsf):
             atomStartIndex = index + 2
         elif (line.strip() == "PRIMVEC"):
             structure.isPeriodic = True
-            structure.primVec = []
             primVecStartIndex = index + 1
             primVecEndIndex = 3 + index + 1 # Assumes PrimVec is always three lines
 
     structure.coordCount = int(xsfRead[atomCountIndex].split()[0])
- 
+
+    tmpList = []
     for i in range(primVecStartIndex, primVecEndIndex):
         tmp = xsfRead[i].split()
-        structure.primVec.append(tmp)
+        tmpList.append(tmp)
+    structure.primVec = tuple(tmpList)
 
     atomCount = 0
     for i in range(atomStartIndex, len(xsfRead)): # Loops through atoms
@@ -204,15 +208,17 @@ def write_xsf_files(newStructsDir, newStructs):
             for atom in atoms:
                 if (isinstance(atom, Atom)):
                     success += 1
-                    f.write("{0: <8}{1: <15}{2: <15}{3: <15}{4: <15}{5: <15}{6: <15}\n".format(atom.symbol,
-                                                                                              (atom.coordinates.get("x")),
-                                                                                              (atom.coordinates.get("y")),
-                                                                                              (atom.coordinates.get("z")),
-                                                                                              (atom.forces.get("x")),
-                                                                                              (atom.forces.get("y")),
-                                                                                              (atom.forces.get("z"))))
+                    f.write("{: <7}{: .8f}    {: .8f}    {: .8f}    {: .8f}    {: .8f}    {: .8f}\n".format(atom.symbol,
+                                                                                                           (atom.coordinates.get("x")),
+                                                                                                           (atom.coordinates.get("y")),
+                                                                                                           (atom.coordinates.get("z")),
+                                                                                                           (atom.forces.get("x")),
+                                                                                                           (atom.forces.get("y")),
+                                                                                                           (atom.forces.get("z"))))
                 else:
                     failure += 1
-            print("Success{succ}Failure{fail}".format(succ=success, fail=failure))
+
+            if failure >= 1:
+                print("Failures: {fail}".format(fail=failure))
 
 main()
