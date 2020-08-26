@@ -1,4 +1,5 @@
 import numpy
+import math
 import sys
 import os
 from pprint import pprint
@@ -21,9 +22,11 @@ def readPredictIn(predictInLoc):
         if line.strip() == "FILES":
             fileNames = predictIn[i+2:len(predictIn)]
     for number, name in enumerate(fileNames, start=1):
+        print(number, name.strip())
         structNames.update({number : name.strip()})
     return structNames
 
+# Reads first n structures within a predict.out file, returns as a list of Data objects. 
 def readPredictOut(entry, n):
     structures = list()
     absForce = list()
@@ -31,20 +34,14 @@ def readPredictOut(entry, n):
     i = 0
     num = 1
 
-    print("Start loop")
-    print(len(entry))
-    print(i)
-    while (num < n+1):
+    while (num < n+1 and i < len(entry)):
         tmp = entry[i].split()
-        if i >= len(entry):
-            print(entry[i])
-            print("BREAK")
-            break
+        if len(tmp) < 1:
+            pass
         elif ("Ti" == tmp[0] or "O" == tmp[0]):
             absForce.append((tmp[4], tmp[5], tmp[6]))
             atomCount += 1
         elif ("Total" == tmp[0] and "energy" == tmp[1]):
-            print("Num: {num}".format(num=num))
             totalEnergy = float(tmp[3])
             relativeEnergy = float(totalEnergy) / atomCount
             newObj = Data(num, tuple(absForce), totalEnergy, relativeEnergy, atomCount)
@@ -57,42 +54,56 @@ def readPredictOut(entry, n):
         i += 1
     return structures
 
+# Reads in secondary, reference predict.out file containing all structures within the original predict.out file. Returns a list of Data objects.
 def prepareCanonicals(structNames, canonicalLoc, n):
     canonicals = dict()
-    # print("CANONICALS")
+    with open(canonicalLoc, "r") as f:
+        canonicalFile = f.readlines()
+    structures = readPredictOut(canonicalFile, n)
     for i in range(1, n+1):
-        name = structNames.get(i)
-        structures = readPredictOut(canonicalLoc, 7715)
-        # print(i, structures)
-        canonicals.update({name : structures[i-1]})
+        name = "../TiO2-xsf/structure{:04d}.xsf".format(i)
+        if (len(structures) >= i-1):
+            canonicals.update({name : structures[i-1]})
+        else:
+            print("EXCEPTION")
+    print(len(canonicals))
     return canonicals
 
+# Calculates relative energy errors as compared to reference values provided at the top of provided .xsf files. 
 def calculateRelativeEnergyErrors(structs, structNames):
     absErrors = []
     for structure in structs:
         fileName = structNames.get(structure.structureNum)
+        # print("A: {fileName}".format(fileName=fileName))
         # print(structure.structureNum, fileName)
         with open(fileName, "r") as f:
             canonicalEnergy = float(f.readline().split()[4]) / structure.atomCount
         # print(str(format(canonicalEnergy)), "-", str(structure.relativeEnergy), "=", str(abs(canonicalEnergy-structure.relativeEnergy)))
         # print(abs(canonicalEnergy - structure.relativeEnergy))
         absErrors.append(abs(canonicalEnergy - structure.relativeEnergy))
-    print(len(structs))
     return absErrors
 
-def calculateAbsoluteForceErrors(structs, structNames, canonical):
-    absErrors = []
-    for i, structure in enumerate(structs, start=1):
-        for j, absForce in enumerate(structure.absoluteForce):
-            absErrors.append(abs(float(absForce) - canonical.get(structNames.get(i)).absoluteForce[j]))
-    return absErrors 
-
-def calculateRelativeEnergyRMSE(structs, structNames, canonical):
+# Calculates relative energy RMSEs as compared to reference value.
+def calculateRelativeEnergyRMSE(structs, structNames):
     RMSE = 0.0
     for i, structure in enumerate(structs, start=1):
-        RMSE += pow((structure.relativeEnergy - canonical.get(structNames.get(i)).relativeEnergy), 2)
-    RMSE = sqrt(RMSE)
+        fileName = structNames.get(structure.structureNum)
+        # print("B: {fileName}".format(fileName=fileName))
+        with open(fileName, "r") as f:
+            canonicalEnergy = float(f.readline().split()[4]) / structure.atomCount
+        RMSE += pow((structure.relativeEnergy - canonicalEnergy), 2)
+    RMSE = math.sqrt(RMSE)
     return RMSE
+
+# Calculates absolute force errors as compared to "canonical".
+def calculateAbsoluteForceErrors(structs, structNames, canonicals):
+    absErrors = list()
+    for i, structure in enumerate(structs, start=1): #Loops through list of structure data
+        for j, absForces in enumerate(structure.absoluteForce): # Loops through absolute forces of every atom in structure
+            for k, absForce in enumerate(absForces): # Loops through absolute forces
+                structName = structNames.get(structure.structureNum)
+                absErrors.append(abs(float(absForce)) - float(canonicals.get(structName).absoluteForce[j][k]))
+    return absErrors
 
 def main():
     predictOutFiles = []
@@ -120,11 +131,11 @@ def main():
             predictEntries.append(f.readlines())
         predictData.append(readPredictOut(predictEntries[i], 500))
         print(len(predictData[i]))
-        # canonical = prepareCanonicals(structNames, canonicalFile, 500)
+        canonicals = prepareCanonicals(structNames, canonicalFile, 7815)
         relativeEnergyErrors.append(calculateRelativeEnergyErrors(predictData[i], structNames))
-        print(sum(relativeEnergyErrors[0])/500)
-        # print(calculateAbsoluteForceErrors(predictData[i], structNames, canonical))
-        # print(calculateRelativeEnergyRMSE(predictData[i], structName, canonical))
+        print(sum(relativeEnergyErrors[i])/7815)
+        print("RMSE: {a}".format(a=calculateRelativeEnergyRMSE(predictData[i], structNames)))
+        print(len(calculateAbsoluteForceErrors(predictData[i], structNames, canonicals)))
 
 
 
