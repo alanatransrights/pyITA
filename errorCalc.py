@@ -25,43 +25,45 @@ def readPredictIn(predictInLoc):
     return structNames
 
 def readPredictOut(entry, n):
-    structures = []
-    absForce = []
+    structures = list()
+    absForce = list()
     atomCount = 0
-    print("NUMS")
-    for num in range(1, n+1): #Fixed error, now terminates at n
-        for i in range(0, len(entry)):
+    i = 0
+    num = 1
+
+    print("Start loop")
+    print(len(entry))
+    print(i)
+    while (num < n+1):
+        tmp = entry[i].split()
+        if i >= len(entry):
             print(entry[i])
-            tmp = entry[i].split()
-            print(tmp)
-            if len(tmp) < 1:
-                continue
-            elif ("Ti" == tmp[0] or "O" == tmp[0]):
-                print("has Ti or O")
-                absForce.append((tmp[4], tmp[5], tmp[6]))
-                atomCount += 1
-            elif ("Total" == tmp[0] and "energy" == tmp[1]):
-                print("has Total energy")
-                totalEnergy = float(tmp[3])
-                relativeEnergy = float(totalEnergy) / atomCount
-                newObj = Data(num, tuple(absForce), totalEnergy, relativeEnergy, atomCount)
-                print(newObj)
-                structures.append(newObj)
-                absForce = []
-                totalEnergy = 0.0
-                relativeEnergy = 0.0
-                atomCount = 0
-                i += 1
-    print(structures)
+            print("BREAK")
+            break
+        elif ("Ti" == tmp[0] or "O" == tmp[0]):
+            absForce.append((tmp[4], tmp[5], tmp[6]))
+            atomCount += 1
+        elif ("Total" == tmp[0] and "energy" == tmp[1]):
+            print("Num: {num}".format(num=num))
+            totalEnergy = float(tmp[3])
+            relativeEnergy = float(totalEnergy) / atomCount
+            newObj = Data(num, tuple(absForce), totalEnergy, relativeEnergy, atomCount)
+            structures.append(newObj)
+            absForce = []
+            totalEnergy = 0.0
+            relativeEnergy = 0.0
+            atomCount = 0
+            num += 1
+        i += 1
     return structures
 
 def prepareCanonicals(structNames, canonicalLoc, n):
     canonicals = dict()
-    print("CANONICALS")
+    # print("CANONICALS")
     for i in range(1, n+1):
         name = structNames.get(i)
         structures = readPredictOut(canonicalLoc, 7715)
-        print(i, structures)
+        # print(i, structures)
         canonicals.update({name : structures[i-1]})
     return canonicals
 
@@ -69,10 +71,13 @@ def calculateRelativeEnergyErrors(structs, structNames):
     absErrors = []
     for structure in structs:
         fileName = structNames.get(structure.structureNum)
-        print(structure.structureNum, fileName)
+        # print(structure.structureNum, fileName)
         with open(fileName, "r") as f:
             canonicalEnergy = float(f.readline().split()[4]) / structure.atomCount
+        # print(str(format(canonicalEnergy)), "-", str(structure.relativeEnergy), "=", str(abs(canonicalEnergy-structure.relativeEnergy)))
+        # print(abs(canonicalEnergy - structure.relativeEnergy))
         absErrors.append(abs(canonicalEnergy - structure.relativeEnergy))
+    print(len(structs))
     return absErrors
 
 def calculateAbsoluteForceErrors(structs, structNames, canonical):
@@ -95,6 +100,7 @@ def main():
     structureFiles = []
     energies = []
     predictData = []
+    relativeEnergyErrors = []
     tmp = ""
 
     tmp = input("Enter predict.in file loc: ")
@@ -113,9 +119,13 @@ def main():
         with open(elem, "r") as f:
             predictEntries.append(f.readlines())
         predictData.append(readPredictOut(predictEntries[i], 500))
+        print(len(predictData[i]))
         # canonical = prepareCanonicals(structNames, canonicalFile, 500)
-        # print(calculateRelativeEnergyErrors(predictData[i], structNames))
+        relativeEnergyErrors.append(calculateRelativeEnergyErrors(predictData[i], structNames))
+        print(sum(relativeEnergyErrors[0])/500)
         # print(calculateAbsoluteForceErrors(predictData[i], structNames, canonical))
         # print(calculateRelativeEnergyRMSE(predictData[i], structName, canonical))
+
+
 
 main()
